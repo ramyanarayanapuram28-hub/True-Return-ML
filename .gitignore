@@ -1,0 +1,16 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.cache/
+huggingface/
+models/
+vision-service.zip
+vision-service/verification_history.csv
+.env
+.env.*
+
+.tmp.driveupload/
+
+vision-service/__pycache__/
+vision-service/verification_history.csv
