@@ -301,71 +301,53 @@ def find_best_assignment(similarity_matrix):
 # ============================================================
 
 
+
 def compare_four_images(original_images, returned_images):
     if len(original_images) != 4 or len(returned_images) != 4:
-        raise ValueError("Exactly 4 original and 4 returned images are required.")
+        raise ValueError(
+            "Exactly 4 original and 4 returned images are required."
+        )
 
     print("\n" + "=" * 65)
     print("TRUE-RETURN: DINOv2 PRODUCT VERIFICATION")
     print("=" * 65)
+
+    # Compare every returned image with every original image.
+    similarity_matrix = build_similarity_matrix(
+        original_images, returned_images
+    )
+
+    # Assign each returned image to a different original image.
+    assignment = find_best_assignment(similarity_matrix)
 
     matched_count = 0
     suspicious_count = 0
     reasons = []
     all_results = []
 
-    # Each returned photo independently compares against all 4 originals.
-    for returned_index, returned_path in enumerate(returned_images, start=1):
-        scores = []
+    for returned_index, original_index in enumerate(assignment):
+        best_score = similarity_matrix[returned_index][original_index]
 
-        for original_index, original_path in enumerate(original_images, start=1):
-            comparison = compare_two_images(original_path, returned_path)
-
-            if comparison is not None:
-                scores.append((
-                    comparison["similarity"],
-                    original_index
-                ))
-
-        print(f"\nReturned Photo {returned_index}")
-
-        if not scores:
-            best_score = 0.0
-            best_original_index = None
-        else:
-            best_score, best_original_index = max(
-                scores,
-                key=lambda item: item[0]
-            )
-
-        if best_original_index is None:
-            photo_result = "SUSPICIOUS"
-            reason = "Could not compare this returned photo."
-        elif best_score >= MATCH_THRESHOLD:
+        if best_score >= MATCH_THRESHOLD:
             photo_result = "MATCH"
-            reason = "At least one admin photo passed the threshold."
-        else:
-            photo_result = "SUSPICIOUS"
-            reason = "No admin photo passed the threshold."
-
-        if photo_result == "MATCH":
+            reason = "Assigned original image passed the threshold."
             matched_count += 1
         else:
+            photo_result = "SUSPICIOUS"
+            reason = "Assigned original image did not pass the threshold."
             suspicious_count += 1
             reasons.append(
-                f"Returned Photo {returned_index}: {reason}"
+                f"Returned Photo {returned_index + 1}: {reason}"
             )
 
-        print(
-            f"Best Original: "
-            f"{best_original_index if best_original_index is not None else 'None'}"
-        )
-        print(f"Best Similarity: {best_score * 100:.1f}%")
+        print(f"\nReturned Photo {returned_index + 1}")
+        print(f"Assigned Original: {original_index + 1}")
+        print(f"Similarity: {best_score * 100:.1f}%")
         print(f"Result: {photo_result}")
 
         all_results.append({
-            "returned_index": returned_index,
-            "best_original_index": best_original_index,
+            "returned_index": returned_index + 1,
+            "best_original_index": original_index + 1,
             "similarity": best_score,
             "similarity_percent": round(best_score * 100, 1),
             "result": photo_result,
@@ -373,20 +355,13 @@ def compare_four_images(original_images, returned_images):
         })
 
     final_result = (
-        "MATCH" if suspicious_count == 0
-        else "SUSPICIOUS"
+        "MATCH" if suspicious_count == 0 else "SUSPICIOUS"
     )
 
     print("\n" + "=" * 65)
     print(f"Matched Photos: {matched_count}/4")
     print(f"Suspicious Photos: {suspicious_count}/4")
     print(f"FINAL RESULT: {final_result}")
-
-    if reasons:
-        print("\nPhotos requiring inspection:")
-        for reason in reasons:
-            print("-", reason)
-
     print("=" * 65)
 
     return {
